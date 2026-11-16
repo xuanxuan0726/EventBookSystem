@@ -1,6 +1,6 @@
 import { CATEGORY_THEME } from '../utils/categories.js';
 
-export const EMPTY_FILTERS = { search: '', date: '', category: '', sort: 'upcoming' };
+export const EMPTY_FILTERS = { search: '', date: '', category: '', status: '', sort: 'upcoming' };
 
 const DEFAULT_SORTS = [
   { value: 'upcoming', label: 'Upcoming first' },
@@ -17,9 +17,11 @@ export default function FilterBar({
   searchPlaceholder = 'Search event name…',
   sorts = DEFAULT_SORTS,
   defaults = EMPTY_FILTERS, // what "Clear" resets to
+  statuses, // optional [{ value, label }]: shows a status dropdown (admin registrations)
 }) {
   const set = (key) => (e) => onChange({ ...filters, [key]: e.target.value });
-  const active = filters.search || filters.date || filters.category || filters.sort !== defaults.sort;
+  const active =
+    filters.search || filters.date || filters.category || filters.status || filters.sort !== defaults.sort;
 
   return (
     <div className="filters" role="search">
@@ -40,6 +42,16 @@ export default function FilterBar({
           </option>
         ))}
       </select>
+      {statuses && (
+        <select value={filters.status} onChange={set('status')} aria-label="Filter by status">
+          <option value="">All statuses</option>
+          {statuses.map((s) => (
+            <option key={s.value} value={s.value}>
+              {s.label}
+            </option>
+          ))}
+        </select>
+      )}
       <select value={filters.sort} onChange={set('sort')} aria-label="Sort">
         {sorts.map((s) => (
           <option key={s.value} value={s.value}>

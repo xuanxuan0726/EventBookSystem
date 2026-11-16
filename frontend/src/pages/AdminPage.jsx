@@ -8,7 +8,7 @@ import InputField from '../components/InputField.jsx';
 import Loader from '../components/Loader.jsx';
 import Alert from '../components/Alert.jsx';
 import FilterBar, { EMPTY_FILTERS } from '../components/FilterBar.jsx';
-import { filterBookings } from '../utils/bookings.js';
+import { BOOKING_STATUSES, filterBookings } from '../utils/bookings.js';
 
 const REGISTRATION_SORTS = [
   { value: 'booked', label: 'Recently booked' },
@@ -198,7 +198,8 @@ function AdminDashboard() {
             filters={filters}
             onChange={setFilters}
             defaults={ADMIN_FILTERS}
-            searchPlaceholder="Search event, attendee or email…"
+            statuses={BOOKING_STATUSES}
+            searchPlaceholder="Search event, name, email…"
             sorts={REGISTRATION_SORTS}
           />
           {visibleRegistrations.length === 0 ? (

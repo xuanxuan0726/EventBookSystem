@@ -15,12 +15,19 @@ export function bookingStatus(r) {
 /** Only confirmed, upcoming bookings can be cancelled (the backend enforces the same rule). */
 export const isCancellable = (r) => r.status === 'confirmed' && !r.is_past;
 
+/** Options for a status filter; values match bookingStatus().key */
+export const BOOKING_STATUSES = [
+  { value: 'confirmed', label: 'Confirmed' },
+  { value: 'completed', label: 'Completed' },
+  { value: 'cancelled', label: 'Cancelled' },
+];
+
 /**
  * Client-side search / filter / sort for booking lists (My Bookings, admin registrations).
  * Uses the same filter options as the event list, so all three tabs behave alike.
  * `searchIn(r)` returns the text the search box matches against.
  */
-export function filterBookings(list, { search = '', date = '', category = '', sort = 'upcoming' }, searchIn) {
+export function filterBookings(list, { search = '', date = '', category = '', status = '', sort = 'upcoming' }, searchIn) {
   const q = search.trim().toLowerCase();
   const now = Date.now();
 
@@ -28,7 +35,8 @@ export function filterBookings(list, { search = '', date = '', category = '', so
     (r) =>
       (!q || searchIn(r).toLowerCase().includes(q)) &&
       (!date || r.event_date.startsWith(date)) &&
-      (!category || r.category === category)
+      (!category || r.category === category) &&
+      (!status || bookingStatus(r).key === status)
   );
 
   const time = (r) => toDate(r.event_date).getTime();
