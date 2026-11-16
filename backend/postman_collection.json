@@ -1,0 +1,102 @@
+{
+  "info": {
+    "name": "EventBook API",
+    "description": "Mini Event Booking System. Run 'Admin login' first: it stores the token in the {{token}} collection variable automatically.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:8000/api" },
+    { "key": "token", "value": "" }
+  ],
+  "item": [
+    {
+      "name": "Events",
+      "item": [
+        { "name": "List events", "request": { "method": "GET", "url": "{{baseUrl}}/events" } },
+        { "name": "Filter by date", "request": { "method": "GET", "url": { "raw": "{{baseUrl}}/events?date=2026-12-10", "host": ["{{baseUrl}}"], "path": ["events"], "query": [{ "key": "date", "value": "2026-12-10" }] } } },
+        { "name": "Search", "request": { "method": "GET", "url": { "raw": "{{baseUrl}}/events?search=jazz", "host": ["{{baseUrl}}"], "path": ["events"], "query": [{ "key": "search", "value": "jazz" }] } } },
+        { "name": "Get one event", "request": { "method": "GET", "url": "{{baseUrl}}/events/1" } }
+      ]
+    },
+    {
+      "name": "Registrations",
+      "item": [
+        {
+          "name": "Register (success)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"name\": \"Zoe Tan\",\n  \"email\": \"zoe@test.com\"\n}" },
+            "url": "{{baseUrl}}/events/1/register"
+          }
+        },
+        {
+          "name": "Register same date (409)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"name\": \"Zoe Tan\",\n  \"email\": \"zoe@test.com\"\n}" },
+            "url": "{{baseUrl}}/events/2/register"
+          }
+        },
+        {
+          "name": "Register full event (409)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"name\": \"Zoe Tan\",\n  \"email\": \"zoe@test.com\"\n}" },
+            "url": "{{baseUrl}}/events/4/register"
+          }
+        },
+        {
+          "name": "Register missing fields (422)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"name\": \"\",\n  \"email\": \"not-an-email\"\n}" },
+            "url": "{{baseUrl}}/events/3/register"
+          }
+        },
+        { "name": "My registrations", "request": { "method": "GET", "url": { "raw": "{{baseUrl}}/registrations?email=zoe@test.com", "host": ["{{baseUrl}}"], "path": ["registrations"], "query": [{ "key": "email", "value": "zoe@test.com" }] } } },
+        {
+          "name": "Cancel my registration",
+          "request": {
+            "method": "DELETE",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"email\": \"zoe@test.com\"\n}" },
+            "url": "{{baseUrl}}/registrations/6"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Admin",
+      "item": [
+        {
+          "name": "Admin login",
+          "event": [{ "listen": "test", "script": { "exec": ["const r = pm.response.json();", "if (r.success) pm.collectionVariables.set('token', r.data.token);"] } }],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"username\": \"admin\",\n  \"password\": \"admin123\"\n}" },
+            "url": "{{baseUrl}}/admin/login"
+          }
+        },
+        { "name": "Who am I", "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }], "url": "{{baseUrl}}/admin/me" } },
+        {
+          "name": "Create event",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }, { "key": "Authorization", "value": "Bearer {{token}}" }],
+            "body": { "mode": "raw", "raw": "{\n  \"title\": \"Laravel Meetup\",\n  \"description\": \"Monthly PHP community meetup\",\n  \"location\": \"Cyberjaya\",\n  \"event_date\": \"2027-03-01 19:00\",\n  \"max_attendees\": 40\n}" },
+            "url": "{{baseUrl}}/events"
+          }
+        },
+        { "name": "Delete event", "request": { "method": "DELETE", "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }], "url": "{{baseUrl}}/events/6" } },
+        { "name": "All registrations", "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }], "url": "{{baseUrl}}/admin/registrations" } },
+        { "name": "Cancel any registration", "request": { "method": "DELETE", "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }], "url": "{{baseUrl}}/admin/registrations/1" } },
+        { "name": "Logout", "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }], "url": "{{baseUrl}}/admin/logout" } }
+      ]
+    }
+  ]
+}
