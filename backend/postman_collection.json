@@ -1,7 +1,7 @@
 {
   "info": {
     "name": "EventBook API",
-    "description": "Mini Event Booking System. Run 'Admin login' first: it stores the token in the {{token}} collection variable automatically.",
+    "description": "Mini Event Booking System API.\n\nImport the fresh seed data first (backend/database/schema.sql), then run the whole collection in order (Collection Runner). Every request checks its expected status and message. IDs are captured from earlier responses, so nothing is hard-coded.\n\n'Upload cover image' needs a file: choose one in the Body tab when running it manually.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
@@ -12,23 +12,50 @@
     {
       "key": "token",
       "value": ""
+    },
+    {
+      "key": "registrationId",
+      "value": ""
+    },
+    {
+      "key": "eventId",
+      "value": ""
     }
   ],
   "item": [
     {
-      "name": "Events",
+      "name": "1. Events",
       "item": [
         {
           "name": "List events",
           "request": {
             "method": "GET",
+            "header": [],
             "url": "{{baseUrl}}/events"
-          }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "pm.test('success = true', () => pm.expect(body.success).to.eql(true));",
+                  "pm.test('message', () => pm.expect(body.message).to.eql(\"Events retrieved.\"));",
+                  "pm.test('has events with slot info', () => {",
+                  "  pm.expect(body.data.length).to.be.above(0);",
+                  "  pm.expect(body.data[0]).to.include.keys('title', 'event_date', 'available_slots', 'is_full');",
+                  "});"
+                ]
+              }
+            }
+          ]
         },
         {
           "name": "Filter by date",
           "request": {
             "method": "GET",
+            "header": [],
             "url": {
               "raw": "{{baseUrl}}/events?date=2026-12-10",
               "host": [
@@ -44,12 +71,26 @@
                 }
               ]
             }
-          }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "pm.test('success = true', () => pm.expect(body.success).to.eql(true));",
+                  "pm.test('only that date', () => body.data.forEach(e => pm.expect(e.event_date).to.match(/^2026-12-10/)));"
+                ]
+              }
+            }
+          ]
         },
         {
           "name": "Search + category + sort",
           "request": {
             "method": "GET",
+            "header": [],
             "url": {
               "raw": "{{baseUrl}}/events?search=seminar&category=Seminar&sort=upcoming",
               "host": [
@@ -69,24 +110,105 @@
                 },
                 {
                   "key": "sort",
-                  "value": "upcoming",
-                  "description": "upcoming | latest | popular"
+                  "value": "upcoming"
                 }
               ]
             }
-          }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "pm.test('success = true', () => pm.expect(body.success).to.eql(true));",
+                  "pm.test('only Seminar', () => body.data.forEach(e => pm.expect(e.category).to.eql('Seminar')));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Invalid sort (422)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/events?sort=nope",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "events"
+              ],
+              "query": [
+                {
+                  "key": "sort",
+                  "value": "nope"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('HTTP 422', () => pm.response.to.have.status(422));",
+                  "const body = pm.response.json();",
+                  "pm.test('success = false', () => pm.expect(body.success).to.eql(false));"
+                ]
+              }
+            }
+          ]
         },
         {
           "name": "Get one event",
           "request": {
             "method": "GET",
+            "header": [],
             "url": "{{baseUrl}}/events/1"
-          }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "pm.test('success = true', () => pm.expect(body.success).to.eql(true));",
+                  "pm.test('message', () => pm.expect(body.message).to.eql(\"Event retrieved.\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Unknown event (404)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/events/99999"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('HTTP 404', () => pm.response.to.have.status(404));",
+                  "const body = pm.response.json();",
+                  "pm.test('success = false', () => pm.expect(body.success).to.eql(false));",
+                  "pm.test('message', () => pm.expect(body.message).to.eql(\"Event not found.\"));"
+                ]
+              }
+            }
+          ]
         }
       ]
     },
     {
-      "name": "Registrations",
+      "name": "2. Registrations",
       "item": [
         {
           "name": "Register (success)",
@@ -98,15 +220,29 @@
                 "value": "application/json"
               }
             ],
+            "url": "{{baseUrl}}/events/1/register",
             "body": {
               "mode": "raw",
               "raw": "{\n  \"name\": \"Zoe Tan\",\n  \"email\": \"zoe@test.com\"\n}"
-            },
-            "url": "{{baseUrl}}/events/1/register"
-          }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('HTTP 201', () => pm.response.to.have.status(201));",
+                  "const body = pm.response.json();",
+                  "pm.test('success = true', () => pm.expect(body.success).to.eql(true));",
+                  "pm.test('message', () => pm.expect(body.message).to.eql(\"Registered successfully.\"));",
+                  "pm.collectionVariables.set('registrationId', body.data.id);"
+                ]
+              }
+            }
+          ]
         },
         {
-          "name": "Register same date (409)",
+          "name": "Same event again (409)",
           "request": {
             "method": "POST",
             "header": [
@@ -115,15 +251,28 @@
                 "value": "application/json"
               }
             ],
+            "url": "{{baseUrl}}/events/1/register",
             "body": {
               "mode": "raw",
               "raw": "{\n  \"name\": \"Zoe Tan\",\n  \"email\": \"zoe@test.com\"\n}"
-            },
-            "url": "{{baseUrl}}/events/2/register"
-          }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('HTTP 409', () => pm.response.to.have.status(409));",
+                  "const body = pm.response.json();",
+                  "pm.test('success = false', () => pm.expect(body.success).to.eql(false));",
+                  "pm.test('message', () => pm.expect(body.message).to.eql(\"You are already registered for this event.\"));"
+                ]
+              }
+            }
+          ]
         },
         {
-          "name": "Register full event (409)",
+          "name": "Same date, other event (409)",
           "request": {
             "method": "POST",
             "header": [
@@ -132,15 +281,28 @@
                 "value": "application/json"
               }
             ],
+            "url": "{{baseUrl}}/events/2/register",
             "body": {
               "mode": "raw",
               "raw": "{\n  \"name\": \"Zoe Tan\",\n  \"email\": \"zoe@test.com\"\n}"
-            },
-            "url": "{{baseUrl}}/events/4/register"
-          }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('HTTP 409', () => pm.response.to.have.status(409));",
+                  "const body = pm.response.json();",
+                  "pm.test('success = false', () => pm.expect(body.success).to.eql(false));",
+                  "pm.test('message', () => pm.expect(body.message).to.eql(\"You already registered for an event on this date.\"));"
+                ]
+              }
+            }
+          ]
         },
         {
-          "name": "Register missing fields (422)",
+          "name": "Full event (409)",
           "request": {
             "method": "POST",
             "header": [
@@ -149,34 +311,121 @@
                 "value": "application/json"
               }
             ],
+            "url": "{{baseUrl}}/events/4/register",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Zoe Tan\",\n  \"email\": \"zoe@test.com\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('HTTP 409', () => pm.response.to.have.status(409));",
+                  "const body = pm.response.json();",
+                  "pm.test('success = false', () => pm.expect(body.success).to.eql(false));",
+                  "pm.test('message', () => pm.expect(body.message).to.eql(\"Sorry, this event is fully booked.\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "After registration deadline (422)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/events/12/register",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Zoe Tan\",\n  \"email\": \"zoe@test.com\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('HTTP 422', () => pm.response.to.have.status(422));",
+                  "const body = pm.response.json();",
+                  "pm.test('success = false', () => pm.expect(body.success).to.eql(false));",
+                  "pm.test('message', () => pm.expect(body.message).to.eql(\"Registration for this event has closed.\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Past event (422)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/events/11/register",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Zoe Tan\",\n  \"email\": \"zoe@test.com\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('HTTP 422', () => pm.response.to.have.status(422));",
+                  "const body = pm.response.json();",
+                  "pm.test('success = false', () => pm.expect(body.success).to.eql(false));",
+                  "pm.test('message', () => pm.expect(body.message).to.eql(\"This event has already taken place.\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Missing fields (422)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/events/3/register",
             "body": {
               "mode": "raw",
               "raw": "{\n  \"name\": \"\",\n  \"email\": \"not-an-email\"\n}"
-            },
-            "url": "{{baseUrl}}/events/3/register"
-          }
-        },
-        {
-          "name": "Register after deadline (422)",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('HTTP 422', () => pm.response.to.have.status(422));",
+                  "const body = pm.response.json();",
+                  "pm.test('success = false', () => pm.expect(body.success).to.eql(false));",
+                  "pm.test('field errors', () => pm.expect(body.errors).to.have.keys('name', 'email'));"
+                ]
               }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"name\": \"Zoe Tan\",\n  \"email\": \"zoe@test.com\"\n}"
-            },
-            "url": "{{baseUrl}}/events/12/register"
-          }
+            }
+          ]
         },
         {
-          "name": "My bookings (incl. cancelled history)",
+          "name": "My bookings",
           "request": {
             "method": "GET",
+            "header": [],
             "url": {
               "raw": "{{baseUrl}}/registrations?email=zoe@test.com",
               "host": [
@@ -192,10 +441,23 @@
                 }
               ]
             }
-          }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "pm.test('success = true', () => pm.expect(body.success).to.eql(true));",
+                  "pm.test('message', () => pm.expect(body.message).to.eql(\"Registrations retrieved.\"));"
+                ]
+              }
+            }
+          ]
         },
         {
-          "name": "Cancel my registration (soft cancel)",
+          "name": "Cancel with wrong email (404)",
           "request": {
             "method": "DELETE",
             "header": [
@@ -204,31 +466,123 @@
                 "value": "application/json"
               }
             ],
+            "url": "{{baseUrl}}/registrations/{{registrationId}}",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"email\": \"zoe@test.com\"\n}"
-            },
-            "url": "{{baseUrl}}/registrations/6"
-          }
-        }
-      ]
-    },
-    {
-      "name": "Admin",
-      "item": [
-        {
-          "name": "Admin login",
+              "raw": "{\n  \"email\": \"someone@else.com\"\n}"
+            }
+          },
           "event": [
             {
               "listen": "test",
               "script": {
                 "exec": [
-                  "const r = pm.response.json();",
-                  "if (r.success) pm.collectionVariables.set('token', r.data.token);"
+                  "pm.test('HTTP 404', () => pm.response.to.have.status(404));",
+                  "const body = pm.response.json();",
+                  "pm.test('success = false', () => pm.expect(body.success).to.eql(false));",
+                  "pm.test('message', () => pm.expect(body.message).to.eql(\"Registration not found for this email.\"));"
                 ]
               }
             }
-          ],
+          ]
+        },
+        {
+          "name": "Cancel my registration",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/registrations/{{registrationId}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"zoe@test.com\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "pm.test('success = true', () => pm.expect(body.success).to.eql(true));",
+                  "pm.test('message', () => pm.expect(body.message).to.eql(\"Registration cancelled. Your slot has been released.\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Cancel again (409)",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/registrations/{{registrationId}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"zoe@test.com\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('HTTP 409', () => pm.response.to.have.status(409));",
+                  "const body = pm.response.json();",
+                  "pm.test('success = false', () => pm.expect(body.success).to.eql(false));",
+                  "pm.test('message', () => pm.expect(body.message).to.eql(\"This registration is already cancelled.\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "History keeps the cancelled booking",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/registrations?email=zoe@test.com",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "registrations"
+              ],
+              "query": [
+                {
+                  "key": "email",
+                  "value": "zoe@test.com"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "pm.test('success = true', () => pm.expect(body.success).to.eql(true));",
+                  "pm.test('status = cancelled', () => pm.expect(body.data.find(r => r.id == pm.collectionVariables.get('registrationId')).status).to.eql('cancelled'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Re-book same date after cancelling",
           "request": {
             "method": "POST",
             "header": [
@@ -237,12 +591,121 @@
                 "value": "application/json"
               }
             ],
+            "url": "{{baseUrl}}/events/2/register",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Zoe Tan\",\n  \"email\": \"zoe@test.com\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('HTTP 201', () => pm.response.to.have.status(201));",
+                  "const body = pm.response.json();",
+                  "pm.test('success = true', () => pm.expect(body.success).to.eql(true));",
+                  "pm.test('message', () => pm.expect(body.message).to.eql(\"Registered successfully.\"));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "3. Admin",
+      "item": [
+        {
+          "name": "Create event without login (401)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/events",
+            "body": {
+              "mode": "raw",
+              "raw": "{}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('HTTP 401', () => pm.response.to.have.status(401));",
+                  "const body = pm.response.json();",
+                  "pm.test('success = false', () => pm.expect(body.success).to.eql(false));",
+                  "pm.test('message', () => pm.expect(body.message).to.eql(\"Authentication required.\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Login with wrong password (401)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/admin/login",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"admin\",\n  \"password\": \"wrong\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('HTTP 401', () => pm.response.to.have.status(401));",
+                  "const body = pm.response.json();",
+                  "pm.test('success = false', () => pm.expect(body.success).to.eql(false));",
+                  "pm.test('message', () => pm.expect(body.message).to.eql(\"Invalid username or password.\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Admin login",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/admin/login",
             "body": {
               "mode": "raw",
               "raw": "{\n  \"username\": \"admin\",\n  \"password\": \"admin123\"\n}"
-            },
-            "url": "{{baseUrl}}/admin/login"
-          }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "pm.test('success = true', () => pm.expect(body.success).to.eql(true));",
+                  "pm.test('message', () => pm.expect(body.message).to.eql(\"Logged in successfully.\"));",
+                  "pm.collectionVariables.set('token', body.data.token);"
+                ]
+              }
+            }
+          ]
         },
         {
           "name": "Who am I",
@@ -255,21 +718,23 @@
               }
             ],
             "url": "{{baseUrl}}/admin/me"
-          }
-        },
-        {
-          "name": "Upload cover image",
+          },
           "event": [
             {
               "listen": "test",
               "script": {
                 "exec": [
-                  "// Paste data.url into image_url of 'Create event'",
-                  "console.log(pm.response.json());"
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "pm.test('success = true', () => pm.expect(body.success).to.eql(true));",
+                  "pm.test('message', () => pm.expect(body.message).to.eql(\"Authenticated.\"));"
                 ]
               }
             }
-          ],
+          ]
+        },
+        {
+          "name": "Upload cover image (choose a file)",
           "request": {
             "method": "POST",
             "header": [
@@ -289,8 +754,43 @@
                 }
               ]
             },
-            "url": "{{baseUrl}}/admin/uploads"
+            "url": "{{baseUrl}}/admin/uploads",
+            "description": "Returns data.url (e.g. /uploads/abc...jpg). Put it in image_url when creating an event. Without a file the API answers 422 'Please choose an image file to upload.'"
           }
+        },
+        {
+          "name": "Create event: invalid (422)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/events",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"\",\n  \"location\": \"\",\n  \"event_date\": \"2020-01-01 10:00\",\n  \"max_attendees\": 0,\n  \"category\": \"Nope\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('HTTP 422', () => pm.response.to.have.status(422));",
+                  "const body = pm.response.json();",
+                  "pm.test('success = false', () => pm.expect(body.success).to.eql(false));",
+                  "pm.test('field errors', () => pm.expect(body.errors).to.include.keys('title', 'location', 'event_date', 'max_attendees', 'category'));"
+                ]
+              }
+            }
+          ]
         },
         {
           "name": "Create event",
@@ -298,33 +798,34 @@
             "method": "POST",
             "header": [
               {
-                "key": "Content-Type",
-                "value": "application/json"
-              },
-              {
                 "key": "Authorization",
                 "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
               }
             ],
+            "url": "{{baseUrl}}/events",
             "body": {
               "mode": "raw",
               "raw": "{\n  \"title\": \"Laravel Meetup\",\n  \"category\": \"Seminar\",\n  \"description\": \"Monthly PHP community meetup\",\n  \"location\": \"Cyberjaya\",\n  \"image_url\": \"\",\n  \"event_date\": \"2027-03-01 19:00\",\n  \"registration_deadline\": \"2027-02-27 23:59\",\n  \"max_attendees\": 40\n}"
-            },
-            "url": "{{baseUrl}}/events"
-          }
-        },
-        {
-          "name": "Delete event",
-          "request": {
-            "method": "DELETE",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{token}}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('HTTP 201', () => pm.response.to.have.status(201));",
+                  "const body = pm.response.json();",
+                  "pm.test('success = true', () => pm.expect(body.success).to.eql(true));",
+                  "pm.test('message', () => pm.expect(body.message).to.eql(\"Event created successfully.\"));",
+                  "pm.collectionVariables.set('eventId', body.data.id);"
+                ]
               }
-            ],
-            "url": "{{baseUrl}}/events/6"
-          }
+            }
+          ]
         },
         {
           "name": "All registrations",
@@ -337,10 +838,23 @@
               }
             ],
             "url": "{{baseUrl}}/admin/registrations"
-          }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "pm.test('success = true', () => pm.expect(body.success).to.eql(true));",
+                  "pm.test('message', () => pm.expect(body.message).to.eql(\"Registrations retrieved.\"));"
+                ]
+              }
+            }
+          ]
         },
         {
-          "name": "Cancel any registration",
+          "name": "Delete the created event",
           "request": {
             "method": "DELETE",
             "header": [
@@ -349,8 +863,21 @@
                 "value": "Bearer {{token}}"
               }
             ],
-            "url": "{{baseUrl}}/admin/registrations/1"
-          }
+            "url": "{{baseUrl}}/events/{{eventId}}"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "pm.test('success = true', () => pm.expect(body.success).to.eql(true));",
+                  "pm.test('message', () => pm.expect(body.message).to.eql(\"Event deleted successfully.\"));"
+                ]
+              }
+            }
+          ]
         },
         {
           "name": "Logout",
@@ -363,7 +890,46 @@
               }
             ],
             "url": "{{baseUrl}}/admin/logout"
-          }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "pm.test('success = true', () => pm.expect(body.success).to.eql(true));",
+                  "pm.test('message', () => pm.expect(body.message).to.eql(\"Logged out.\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Token rejected after logout (401)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": "{{baseUrl}}/admin/me"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('HTTP 401', () => pm.response.to.have.status(401));",
+                  "const body = pm.response.json();",
+                  "pm.test('success = false', () => pm.expect(body.success).to.eql(false));",
+                  "pm.test('message', () => pm.expect(body.message).to.eql(\"Session expired or invalid token. Please log in again.\"));"
+                ]
+              }
+            }
+          ]
         }
       ]
     }

@@ -6,7 +6,7 @@ Users can browse events and register for them, with one rule: **a user cannot re
 |----------|------|
 | Frontend | React 18 (functional components + hooks), Vite |
 | Backend  | Native PHP 8.1+ (no framework), PDO, REST/JSON |
-| Database | MySQL / MariaDB (InnoDB) |
+| Database | MySQL |
 
 ---
 
