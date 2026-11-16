@@ -18,6 +18,9 @@ src/
 ├── hooks/useEvents.js       events + filters with debounce, abort, loading & error state
 ├── components/
 │   ├── EventCard.jsx        title, date, available slots, register button (disabled when full/past)
+│   ├── EventCover.jsx       event photo with a category-themed fallback
+│   ├── EventStatus.jsx      Sold / Only N left / N Seats available / Ended
+│   ├── EventDetails.jsx     "More details" view
 │   ├── EventFilters.jsx     search + date filter
 │   ├── RegistrationForm.jsx name/email form, client validation, same-date pre-check
 │   ├── InputField.jsx       labelled input with inline error

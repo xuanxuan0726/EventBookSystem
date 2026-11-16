@@ -15,12 +15,14 @@ export function validateRegistration({ name, email }) {
   return errors;
 }
 
-export function validateEvent({ title, location, event_date, max_attendees }) {
+export function validateEvent({ title, location, image_url = '', event_date, max_attendees }) {
   const errors = {};
   if (!title.trim()) errors.title = 'Title is required.';
   if (!location.trim()) errors.location = 'Location is required.';
   if (!event_date) errors.event_date = 'Event date is required.';
   else if (new Date(event_date) <= new Date()) errors.event_date = 'Event date must be in the future.';
+
+  if (image_url.trim() && !/^https?:\/\/\S+$/i.test(image_url.trim())) errors.image_url = 'Image URL must be a valid http(s) link.';
 
   const max = Number(max_attendees);
   if (!Number.isInteger(max) || max < 1) errors.max_attendees = 'Max attendees must be at least 1.';

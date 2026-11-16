@@ -1,36 +1,53 @@
-import { formatDateTime } from '../utils/format.js';
+import { compactNumber, formatDay, formatTime } from '../utils/format.js';
+import { CalendarClockIcon, ChevronRight, PinIcon, UsersIcon } from './icons.jsx';
+import EventCover from './EventCover.jsx';
+import EventStatus from './EventStatus.jsx';
 
-export default function EventCard({ event, onRegister }) {
-  const { title, description, location, event_date, max_attendees, registered_count, available_slots, is_full, is_past } =
-    event;
-  const pct = Math.min(100, (registered_count / max_attendees) * 100);
+export default function EventCard({ event, onDetails, onRegister }) {
+  const { title, description, location, event_date, registered_count, is_full, is_past } = event;
   const disabled = is_full || is_past;
 
-  let badge = null;
-  if (is_past) badge = <span className="badge muted-badge">Ended</span>;
-  else if (is_full) badge = <span className="badge sold">Full</span>;
-  else if (available_slots <= 5) badge = <span className="badge low">Only {available_slots} left</span>;
-
   return (
-    <article className={`card event-card ${disabled ? 'is-disabled' : ''}`}>
-      <div className="card-top">
-        <span className="date-chip">{formatDateTime(event_date)}</span>
-        {badge}
+    <article className={`event-card ${disabled ? 'is-disabled' : ''}`}>
+      <div className="ec-top">
+        <button className="ec-thumb-btn" onClick={() => onDetails(event)} aria-label={`View details for ${title}`}>
+          <EventCover event={event} className="ec-thumb" />
+        </button>
+        <button className="more-link" onClick={() => onDetails(event)}>
+          More details <ChevronRight size={14} />
+        </button>
       </div>
-      <h3>{title}</h3>
-      <p className="muted small">📍 {location}</p>
-      {description && <p className="desc">{description}</p>}
 
-      <div className="slots">
-        <div className="progress" aria-hidden="true">
-          <div className="bar" style={{ width: `${pct}%` }} />
-        </div>
-        <p className="small">
-          <b>{available_slots}</b> of {max_attendees} slots available
+      <div className="ec-title-row">
+        <h3 title={title}>{title}</h3>
+        <span className="pop-badge" title={`${registered_count} registered`}>
+          {compactNumber(registered_count)}
+          <UsersIcon size={11} />
+        </span>
+      </div>
+      {description && (
+        <p className="ec-desc" title={description}>
+          {description}
         </p>
+      )}
+
+      <div className="ec-meta">
+        <span>
+          <PinIcon />
+          {location}
+        </span>
+        <span>
+          <CalendarClockIcon />
+          {formatDay(event_date)} | {formatTime(event_date)}
+        </span>
       </div>
 
-      <button className="btn primary" disabled={disabled} onClick={() => onRegister(event)}>
+      <div className="ec-foot">
+        <span>Attendees: {registered_count.toLocaleString()}</span>
+        <EventStatus event={event} />
+      </div>
+
+      <button className="btn primary ec-register" disabled={disabled} onClick={() => onRegister(event)}>
         {is_past ? 'Event ended' : is_full ? 'Fully booked' : 'Register'}
       </button>
     </article>

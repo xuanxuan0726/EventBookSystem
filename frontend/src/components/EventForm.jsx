@@ -2,8 +2,10 @@ import { useState } from 'react';
 import { validateEvent } from '../utils/validation.js';
 import InputField from './InputField.jsx';
 import Alert from './Alert.jsx';
+import EventCover from './EventCover.jsx';
+import { CATEGORY_THEME } from '../utils/categories.js';
 
-const EMPTY = { title: '', description: '', location: '', event_date: '', max_attendees: '50' };
+const EMPTY = { title: '', category: 'Music', description: '', location: '', image_url: '', event_date: '', max_attendees: '50' };
 
 /** Admin form for creating an event. `onSubmit` returns a promise. */
 export default function EventForm({ onSubmit }) {
@@ -41,7 +43,31 @@ export default function EventForm({ onSubmit }) {
       <h3>Create event</h3>
       <InputField label="Title" value={form.title} onChange={update('title')} error={errors.title} maxLength={150} />
       <InputField label="Description" hint="(optional)" textarea rows={3} value={form.description} onChange={update('description')} error={errors.description} />
+      <div className="field">
+        <label htmlFor="event-category">Category</label>
+        <select id="event-category" value={form.category} onChange={update('category')}>
+          {Object.entries(CATEGORY_THEME).map(([name, t]) => (
+            <option key={name} value={name}>
+              {t.emoji} {name}
+            </option>
+          ))}
+        </select>
+      </div>
       <InputField label="Location" value={form.location} onChange={update('location')} error={errors.location} maxLength={150} />
+      <div className="cover-input">
+        <InputField
+          label="Cover image URL"
+          hint="(optional)"
+          type="url"
+          placeholder="https://…"
+          value={form.image_url}
+          onChange={update('image_url')}
+          error={errors.image_url}
+          maxLength={500}
+        />
+        {/* key forces a fresh <img> (and error state) whenever the URL changes */}
+        <EventCover key={form.image_url} event={form} className="cover-preview" />
+      </div>
       <div className="row">
         <InputField label="Date & time" type="datetime-local" value={form.event_date} onChange={update('event_date')} error={errors.event_date} />
         <InputField label="Max attendees" type="number" min="1" value={form.max_attendees} onChange={update('max_attendees')} error={errors.max_attendees} />

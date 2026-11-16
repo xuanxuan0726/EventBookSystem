@@ -53,6 +53,8 @@ every request to `index.php` and forwards the `Authorization` header.
 - Admin login: **admin / admin123**
 - *Tech Conference 2026* and *Startup Networking Night* are on the **same date**. Use them to test the same-date rule.
 - *React Workshop* is **full** (3/3), so its Register button is disabled.
+- *Stand-up Comedy Night* has only **2 seats left**, so it shows the "Only 2 left" status.
+- Sample cover photos are loaded from Unsplash, so they need an internet connection. Without one, the themed fallback covers appear.
 
 ### API testing
 Import `backend/postman_collection.json` into Postman. Run **Admin login** first: it saves the token
@@ -89,10 +91,11 @@ frontend/
     ├── api/client.js        # fetch wrapper, ApiError, endpoint functions
     ├── context/AuthContext.jsx  # Admin session (token in localStorage, verified on load)
     ├── hooks/useEvents.js   # Fetch events with filters, debounce, abort, loading/error state
-    ├── components/          # EventCard, EventFilters, InputField, RegistrationForm,
-    │                        # RegistrationTable, EventForm, Modal, Alert, Loader, Header
+    ├── components/          # EventCard, EventCover, EventStatus, EventDetails, EventFilters,
+    │                        # InputField, RegistrationForm, RegistrationTable, EventForm,
+    │                        # Modal, Alert, Loader, Header, icons
     ├── pages/               # EventsPage, MyRegistrationsPage, AdminPage
-    └── utils/               # format.js, validation.js, storage.js
+    └── utils/               # format.js, validation.js, storage.js, categories.js
 ```
 
 ---
@@ -102,7 +105,7 @@ frontend/
 ```
 admins        (id, username UNIQUE, password_hash, created_at)
 api_tokens    (id, admin_id → admins, token_hash UNIQUE, expires_at, created_at)
-events        (id, title, description, location, event_date DATETIME, max_attendees, created_at)
+events        (id, title, category, description, location, image_url, event_date DATETIME, max_attendees, created_at)
 registrations (id, event_id → events ON DELETE CASCADE, name, email, event_day DATE, created_at)
               UNIQUE (email, event_day)
 ```
@@ -120,6 +123,8 @@ Design decisions:
   The same key also stops someone registering twice for the same event.
 - **Emails are stored lower-cased**, so `Zoe@Test.com` and `zoe@test.com` count as the same user.
 - **Deleting an event** cascades to its registrations.
+- **`category`** comes from a fixed list (validated in PHP). **`image_url`** is an optional http(s) cover photo. If it's
+  empty or fails to load, the card shows a gradient cover themed by category instead.
 - Admin passwords use `password_hash()` (bcrypt). Tokens are stored as **SHA-256 hashes**, so a leaked
   database contains no usable tokens.
 
@@ -176,7 +181,7 @@ Base URL: `http://localhost:8000/api`
 
 | Method | Endpoint | Auth | Description |
 |--------|----------|------|-------------|
-| GET    | `/events?date=YYYY-MM-DD&search=text` | – | List events with `registered_count`, `available_slots`, `is_full`, `is_past` |
+| GET    | `/events?date=YYYY-MM-DD&search=text&category=&location=&sort=date\|popular\|seats` | – | List events with `registered_count`, `available_slots`, `is_full`, `is_past` |
 | GET    | `/events/{id}` | – | One event |
 | POST   | `/events/{id}/register` | – | Body `{ name, email }` |
 | GET    | `/registrations?email=` | – | A user's registrations |
@@ -184,7 +189,7 @@ Base URL: `http://localhost:8000/api`
 | POST   | `/admin/login` | – | Body `{ username, password }` → `{ token, expires_at }` |
 | GET    | `/admin/me` | Bearer | Checks the token |
 | POST   | `/admin/logout` | Bearer | Revokes the token |
-| POST   | `/events` | Bearer | Create event `{ title, description?, location, event_date, max_attendees }` |
+| POST   | `/events` | Bearer | Create event `{ title, category?, description?, location, image_url?, event_date, max_attendees }` |
 | DELETE | `/events/{id}` | Bearer | Delete event (and its registrations) |
 | GET    | `/admin/registrations` | Bearer | All registrations |
 | DELETE | `/admin/registrations/{id}` | Bearer | Cancel any registration |

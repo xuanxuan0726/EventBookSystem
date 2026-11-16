@@ -48,6 +48,26 @@ final class Validator
         return $this;
     }
 
+    /** Optional field: if present, must be one of $allowed. */
+    public function in(string $field, array $allowed, string $label): self
+    {
+        $value = $this->data[$field] ?? null;
+        if ($value !== null && $value !== '' && !in_array($value, $allowed, true)) {
+            $this->errors[$field] ??= "$label must be one of: " . implode(', ', $allowed) . '.';
+        }
+        return $this;
+    }
+
+    /** Optional field: if present, must be an http(s) URL. */
+    public function url(string $field, string $label): self
+    {
+        $value = trim((string) ($this->data[$field] ?? ''));
+        if ($value !== '' && (!filter_var($value, FILTER_VALIDATE_URL) || !preg_match('#^https?://#i', $value))) {
+            $this->errors[$field] ??= "$label must be a valid http(s) link.";
+        }
+        return $this;
+    }
+
     /** Accepts "YYYY-MM-DD HH:MM[:SS]" or "YYYY-MM-DDTHH:MM[:SS]" and requires a future date. */
     public function futureDateTime(string $field, string $label): self
     {

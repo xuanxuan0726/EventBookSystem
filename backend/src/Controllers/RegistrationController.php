@@ -13,7 +13,7 @@ final class RegistrationController
 {
     private const SELECT = '
         SELECT r.id, r.event_id, r.name, r.email, r.created_at,
-               e.title AS event_title, e.event_date, e.location
+               e.title AS event_title, e.event_date, e.location, e.category, e.image_url
         FROM registrations r
         JOIN events e ON e.id = r.event_id';
 

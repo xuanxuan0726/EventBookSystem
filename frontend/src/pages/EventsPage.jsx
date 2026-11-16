@@ -3,6 +3,7 @@ import { useEvents } from '../hooks/useEvents.js';
 import EventCard from '../components/EventCard.jsx';
 import EventFilters from '../components/EventFilters.jsx';
 import RegistrationForm from '../components/RegistrationForm.jsx';
+import EventDetails from '../components/EventDetails.jsx';
 import Modal from '../components/Modal.jsx';
 import Loader from '../components/Loader.jsx';
 import Alert from '../components/Alert.jsx';
@@ -10,7 +11,9 @@ import Alert from '../components/Alert.jsx';
 export default function EventsPage() {
   const [filters, setFilters] = useState({ search: '', date: '' });
   const { events, loading, error, reload } = useEvents(filters);
+  // { event, mode: 'details' | 'register' }
   const [selected, setSelected] = useState(null);
+  const close = () => setSelected(null);
 
   return (
     <section>
@@ -37,13 +40,22 @@ export default function EventsPage() {
 
       <div className={`grid ${loading && events.length ? 'is-refreshing' : ''}`}>
         {events.map((event) => (
-          <EventCard key={event.id} event={event} onRegister={setSelected} />
+          <EventCard
+            key={event.id}
+            event={event}
+            onDetails={(e) => setSelected({ event: e, mode: 'details' })}
+            onRegister={(e) => setSelected({ event: e, mode: 'register' })}
+          />
         ))}
       </div>
 
       {selected && (
-        <Modal title={`Register for ${selected.title}`} onClose={() => setSelected(null)}>
-          <RegistrationForm event={selected} onSuccess={reload} onClose={() => setSelected(null)} />
+        <Modal title={selected.event.title} onClose={close}>
+          {selected.mode === 'details' ? (
+            <EventDetails event={selected.event} onRegister={(e) => setSelected({ event: e, mode: 'register' })} />
+          ) : (
+            <RegistrationForm event={selected.event} onSuccess={reload} onClose={close} />
+          )}
         </Modal>
       )}
     </section>
