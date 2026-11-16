@@ -1,30 +1,28 @@
-import { compactNumber, formatDay, formatTime } from '../utils/format.js';
-import { CalendarClockIcon, ChevronRight, PinIcon, UsersIcon } from './icons.jsx';
+import { canRegister, formatDay, formatTime } from '../utils/format.js';
+import { eventPath } from '../hooks/useHashRoute.js';
+import { CalendarClockIcon, ChevronRight, PinIcon } from './icons.jsx';
 import EventCover from './EventCover.jsx';
-import EventStatus from './EventStatus.jsx';
+import EventStatus, { registerLabel } from './EventStatus.jsx';
 
-export default function EventCard({ event, onDetails, onRegister }) {
-  const { title, description, location, event_date, registered_count, is_full, is_past } = event;
-  const disabled = is_full || is_past;
+/** Compact summary card. The full information lives on the event details page. */
+export default function EventCard({ event, onRegister }) {
+  const { id, title, description, location, event_date, registered_count } = event;
+  const open = canRegister(event);
 
   return (
-    <article className={`event-card ${disabled ? 'is-disabled' : ''}`}>
+    <article className={`event-card ${open ? '' : 'is-disabled'}`}>
       <div className="ec-top">
-        <button className="ec-thumb-btn" onClick={() => onDetails(event)} aria-label={`View details for ${title}`}>
-          <EventCover event={event} className="ec-thumb" />
-        </button>
-        <button className="more-link" onClick={() => onDetails(event)}>
-          More details <ChevronRight size={14} />
-        </button>
+        <a className="ec-thumb-btn" href={eventPath(id)} aria-label={`View details for ${title}`}>
+          <EventCover event={event} className="ec-thumb" width={112} />
+        </a>
+        <a className="more-link" href={eventPath(id)}>
+          View details <ChevronRight size={14} />
+        </a>
       </div>
 
-      <div className="ec-title-row">
-        <h3 title={title}>{title}</h3>
-        <span className="pop-badge" title={`${registered_count} registered`}>
-          {compactNumber(registered_count)}
-          <UsersIcon size={11} />
-        </span>
-      </div>
+      <h3 className="ec-title" title={title}>
+        {title}
+      </h3>
       {description && (
         <p className="ec-desc" title={description}>
           {description}
@@ -47,8 +45,8 @@ export default function EventCard({ event, onDetails, onRegister }) {
         <EventStatus event={event} />
       </div>
 
-      <button className="btn primary ec-register" disabled={disabled} onClick={() => onRegister(event)}>
-        {is_past ? 'Event ended' : is_full ? 'Fully booked' : 'Register'}
+      <button className="btn primary ec-register" disabled={!open} onClick={() => onRegister(event)}>
+        {registerLabel(event)}
       </button>
     </article>
   );

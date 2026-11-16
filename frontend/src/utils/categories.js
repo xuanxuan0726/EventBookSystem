@@ -2,6 +2,7 @@
 export const CATEGORY_THEME = {
   Music:      { emoji: '🎵', from: '#7c3aed', to: '#db2777' },
   Conference: { emoji: '🎤', from: '#0e7490', to: '#1e3a8a' },
+  Seminar:    { emoji: '📚', from: '#1d4ed8', to: '#0891b2' },
   Workshop:   { emoji: '🛠️', from: '#0f766e', to: '#65a30d' },
   Networking: { emoji: '🤝', from: '#b45309', to: '#be123c' },
   Sports:     { emoji: '🏃', from: '#16a34a', to: '#0369a1' },

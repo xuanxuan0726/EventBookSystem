@@ -1,29 +1,35 @@
 import { useState } from 'react';
 import { useEvents } from '../hooks/useEvents.js';
 import EventCard from '../components/EventCard.jsx';
-import EventFilters from '../components/EventFilters.jsx';
+import FilterBar, { EMPTY_FILTERS } from '../components/FilterBar.jsx';
 import RegistrationForm from '../components/RegistrationForm.jsx';
-import EventDetails from '../components/EventDetails.jsx';
 import Modal from '../components/Modal.jsx';
 import Loader from '../components/Loader.jsx';
 import Alert from '../components/Alert.jsx';
 
+const EVENT_SORTS = [
+  { value: 'upcoming', label: 'Upcoming first' },
+  { value: 'latest', label: 'Latest date first' },
+  { value: 'popular', label: 'Most popular' },
+];
+
 export default function EventsPage() {
-  const [filters, setFilters] = useState({ search: '', date: '' });
+  const [filters, setFilters] = useState(EMPTY_FILTERS);
   const { events, loading, error, reload } = useEvents(filters);
-  // { event, mode: 'details' | 'register' }
-  const [selected, setSelected] = useState(null);
-  const close = () => setSelected(null);
+  const [registering, setRegistering] = useState(null);
 
   return (
     <section>
-      <div className="section-head">
-        <div>
-          <h2>Events</h2>
-          <p className="muted small">You can register for one event per date.</p>
-        </div>
-        <EventFilters filters={filters} onChange={setFilters} />
+      <div className="page-head">
+        <h2>Events</h2>
+        <p className="muted small">You can register for one event per date.</p>
       </div>
+      <FilterBar
+        filters={filters}
+        onChange={setFilters}
+        searchPlaceholder="Search event name or location…"
+        sorts={EVENT_SORTS}
+      />
 
       {error && (
         <Alert>
@@ -34,28 +40,17 @@ export default function EventsPage() {
         </Alert>
       )}
       {loading && events.length === 0 && <Loader text="Loading events…" />}
-      {!loading && !error && events.length === 0 && (
-        <p className="empty">No events match your filters.</p>
-      )}
+      {!loading && !error && events.length === 0 && <p className="empty">No events match your filters.</p>}
 
       <div className={`grid ${loading && events.length ? 'is-refreshing' : ''}`}>
         {events.map((event) => (
-          <EventCard
-            key={event.id}
-            event={event}
-            onDetails={(e) => setSelected({ event: e, mode: 'details' })}
-            onRegister={(e) => setSelected({ event: e, mode: 'register' })}
-          />
+          <EventCard key={event.id} event={event} onRegister={setRegistering} />
         ))}
       </div>
 
-      {selected && (
-        <Modal title={selected.event.title} onClose={close}>
-          {selected.mode === 'details' ? (
-            <EventDetails event={selected.event} onRegister={(e) => setSelected({ event: e, mode: 'register' })} />
-          ) : (
-            <RegistrationForm event={selected.event} onSuccess={reload} onClose={close} />
-          )}
+      {registering && (
+        <Modal title={`Register for ${registering.title}`} onClose={() => setRegistering(null)}>
+          <RegistrationForm event={registering} onSuccess={reload} onClose={() => setRegistering(null)} />
         </Modal>
       )}
     </section>

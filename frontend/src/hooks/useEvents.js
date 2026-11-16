@@ -8,7 +8,7 @@ export function useEvents(filters = {}) {
   const [error, setError] = useState('');
   const [version, setVersion] = useState(0);
 
-  const { date = '', search = '' } = filters;
+  const { search = '', date = '', category = '', sort = 'upcoming' } = filters;
 
   useEffect(() => {
     const controller = new AbortController();
@@ -16,7 +16,7 @@ export function useEvents(filters = {}) {
     const timer = setTimeout(() => {
       setLoading(true);
       eventsApi
-        .list({ date, search }, controller.signal)
+        .list({ search, date, category, sort }, controller.signal)
         .then((res) => {
           setEvents(res.data);
           setError('');
@@ -33,7 +33,7 @@ export function useEvents(filters = {}) {
       clearTimeout(timer);
       controller.abort();
     };
-  }, [date, search, version]);
+  }, [search, date, category, sort, version]);
 
   const reload = useCallback(() => setVersion((v) => v + 1), []);
 

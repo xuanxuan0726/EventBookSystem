@@ -7,9 +7,18 @@
 
 declare(strict_types=1);
 
+// PHP's built-in dev server: let it serve uploaded images directly (Apache does this via .htaccess)
+if (PHP_SAPI === 'cli-server') {
+    $path = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
+    if (str_starts_with($path, '/uploads/') && is_file(__DIR__ . $path)) {
+        return false;
+    }
+}
+
 use App\Controllers\AuthController;
 use App\Controllers\EventController;
 use App\Controllers\RegistrationController;
+use App\Controllers\UploadController;
 use App\Request;
 use App\Response;
 use App\Router;
@@ -64,6 +73,7 @@ $router->add('GET',    '/api/admin/me',             [AuthController::class, 'me'
 // Admin only (Bearer token)
 $router->add('POST',   '/api/events',               [EventController::class, 'store']);
 $router->add('DELETE', '/api/events/{id}',          [EventController::class, 'destroy']);
+$router->add('POST',   '/api/admin/uploads',        [UploadController::class, 'store']);
 $router->add('GET',    '/api/admin/registrations',  [RegistrationController::class, 'all']);
 $router->add('DELETE', '/api/admin/registrations/{id}', [RegistrationController::class, 'adminCancel']);
 

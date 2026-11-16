@@ -1,28 +1,32 @@
 import { useAuth } from '../context/AuthContext.jsx';
 
 const TABS = [
-  { key: 'events', label: 'Events' },
-  { key: 'mine', label: 'My Registrations' },
-  { key: 'admin', label: 'Admin' },
+  { key: 'events', label: 'Events', href: '#/events' },
+  { key: 'bookings', label: 'My Bookings', href: '#/bookings' },
+  { key: 'admin', label: 'Admin', href: '#/admin' },
 ];
 
-export default function Header({ page, onNavigate }) {
+export default function Header({ page }) {
   const { admin, logout } = useAuth();
+  // The event details page belongs to the Events tab
+  const activeTab = page === 'event' ? 'events' : page;
 
   return (
     <header className="header">
       <div className="header-inner">
-        <h1 className="logo">EventBook</h1>
+        <a className="logo" href="#/events">
+          EventBook
+        </a>
         <nav className="tabs">
           {TABS.map((t) => (
-            <button
+            <a
               key={t.key}
-              className={`tab ${page === t.key ? 'active' : ''}`}
-              aria-current={page === t.key ? 'page' : undefined}
-              onClick={() => onNavigate(t.key)}
+              href={t.href}
+              className={`tab ${activeTab === t.key ? 'active' : ''}`}
+              aria-current={activeTab === t.key ? 'page' : undefined}
             >
               {t.label}
-            </button>
+            </a>
           ))}
           {admin && (
             <button className="tab" onClick={logout} title={`Signed in as ${admin.username}`}>

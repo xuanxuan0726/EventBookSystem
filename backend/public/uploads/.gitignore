@@ -1,0 +1,4 @@
+# Uploaded event covers are user data, not source code
+*
+!.gitignore
+!.htaccess

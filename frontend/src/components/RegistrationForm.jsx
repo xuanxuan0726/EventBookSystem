@@ -30,7 +30,10 @@ export default function RegistrationForm({ event, onSuccess, onClose }) {
     try {
       // Same-date pre-check for instant feedback (the backend enforces it regardless)
       const existing = await registrationsApi.byEmail(form.email.trim());
-      const clash = existing.data.find((r) => dayOf(r.event_date) === dayOf(event.event_date));
+      // Only confirmed bookings count: a cancelled booking must not block re-booking that date
+      const clash = existing.data.find(
+        (r) => r.status === 'confirmed' && dayOf(r.event_date) === dayOf(event.event_date)
+      );
       if (clash) {
         setServerError(
           clash.event_id === event.id

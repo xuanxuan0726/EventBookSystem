@@ -1,0 +1,6 @@
+# Uploaded files are images only: never execute scripts or route them through index.php
+<FilesMatch "\.(php|phtml|phar|pl|py|cgi|sh)$">
+    Require all denied
+</FilesMatch>
+Options -Indexes
+RewriteEngine Off

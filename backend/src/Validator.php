@@ -58,13 +58,23 @@ final class Validator
         return $this;
     }
 
-    /** Optional field: if present, must be an http(s) URL. */
-    public function url(string $field, string $label): self
+    /** Optional field: an http(s) link, or a file path returned by the upload endpoint. */
+    public function imageUrl(string $field, string $label): self
     {
         $value = trim((string) ($this->data[$field] ?? ''));
-        if ($value !== '' && (!filter_var($value, FILTER_VALIDATE_URL) || !preg_match('#^https?://#i', $value))) {
-            $this->errors[$field] ??= "$label must be a valid http(s) link.";
+        if ($value === '' || preg_match(Controllers\UploadController::LOCAL_PATH_PATTERN, $value)) {
+            return $this;
         }
+        if (!filter_var($value, FILTER_VALIDATE_URL) || !preg_match('#^https?://#i', $value)) {
+            $this->errors[$field] ??= "$label must be an uploaded image or a valid http(s) link.";
+        }
+        return $this;
+    }
+
+    /** Record a rule checked outside this class (e.g. comparing two fields). */
+    public function addError(string $field, string $message): self
+    {
+        $this->errors[$field] ??= $message;
         return $this;
     }
 

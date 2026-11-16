@@ -10,24 +10,28 @@ use App\Validator;
 
 final class EventController
 {
-    public const CATEGORIES = ['Music', 'Conference', 'Workshop', 'Networking', 'Sports', 'Arts', 'Comedy', 'Other'];
+    public const CATEGORIES = [
+        'Music', 'Conference', 'Seminar', 'Workshop', 'Networking', 'Sports', 'Arts', 'Comedy', 'Other',
+    ];
 
     /** ?sort= value => ORDER BY clause (whitelisted, never interpolated from user input) */
     private const SORTS = [
-        'date'    => 'e.event_date ASC',
-        'popular' => 'registered_count DESC, e.event_date ASC',
-        'seats'   => 'available_slots DESC, e.event_date ASC',
+        // Upcoming events first (soonest at the top), past events at the end
+        'upcoming' => '(e.event_date < NOW()) ASC, e.event_date ASC',
+        'latest'   => 'e.event_date DESC',
+        'popular'  => 'registered_count DESC, e.event_date ASC',
     ];
 
-    /** Columns returned for every event, including live seat counts. */
+    /** Columns returned for every event. Seat counts include CONFIRMED bookings only. */
     private const SELECT = "
-        SELECT e.id, e.title, e.category, e.description, e.location, e.image_url, e.event_date, e.max_attendees,
+        SELECT e.id, e.title, e.category, e.description, e.location, e.image_url,
+               e.event_date, e.registration_deadline, e.max_attendees,
                COUNT(r.id)                   AS registered_count,
                e.max_attendees - COUNT(r.id) AS available_slots
         FROM events e
-        LEFT JOIN registrations r ON r.event_id = e.id";
+        LEFT JOIN registrations r ON r.event_id = e.id AND r.status = 'confirmed'";
 
-    /** GET /api/events?date=YYYY-MM-DD&search=text&category=Music&location=...&sort=date|popular|seats */
+    /** GET /api/events?search=&date=YYYY-MM-DD&category=&location=&sort=upcoming|latest|popular */
     public static function index(): void
     {
         $where  = [];
@@ -54,7 +58,7 @@ final class EventController
             $where[]  = 'e.location = ?';
             $params[] = $location;
         }
-        $sort = self::SORTS[Request::query('sort') ?? 'date'] ?? null;
+        $sort = self::SORTS[Request::query('sort') ?? 'upcoming'] ?? null;
         if ($sort === null) {
             Response::error('Sort must be one of: ' . implode(', ', array_keys(self::SORTS)) . '.', 422);
         }
@@ -81,27 +85,35 @@ final class EventController
         Auth::requireAdmin();
         $data = Request::json();
 
-        (new Validator($data))
+        $validator = (new Validator($data))
             ->required('title', 'Title')->maxLength('title', 150, 'Title')
             ->required('location', 'Location')->maxLength('location', 150, 'Location')
             ->required('event_date', 'Event date')->futureDateTime('event_date', 'Event date')
+            ->futureDateTime('registration_deadline', 'Registration deadline')
             ->required('max_attendees', 'Max attendees')->integer('max_attendees', 1, 100000, 'Max attendees')
             ->maxLength('description', 2000, 'Description')
             ->in('category', self::CATEGORIES, 'Category')
-            ->url('image_url', 'Image URL')->maxLength('image_url', 500, 'Image URL')
-            ->validate();
+            ->imageUrl('image_url', 'Cover image')->maxLength('image_url', 500, 'Cover image');
+
+        $eventDate = Validator::parseDateTime((string) ($data['event_date'] ?? ''));
+        $deadline  = Validator::parseDateTime((string) ($data['registration_deadline'] ?? ''));
+        if ($eventDate && $deadline && $deadline > $eventDate) {
+            $validator->addError('registration_deadline', 'Registration deadline must be on or before the event date.');
+        }
+        $validator->validate();
 
         $db = Database::connection();
         $db->prepare(
-            'INSERT INTO events (title, category, description, location, image_url, event_date, max_attendees)
-             VALUES (?, ?, ?, ?, ?, ?, ?)'
+            'INSERT INTO events (title, category, description, location, image_url, event_date, registration_deadline, max_attendees)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
         )->execute([
             trim($data['title']),
-            $data['category'] ?? 'Other',
+            ($data['category'] ?? '') ?: 'Other',
             trim((string) ($data['description'] ?? '')) ?: null,
             trim($data['location']),
             trim((string) ($data['image_url'] ?? '')) ?: null,
-            Validator::parseDateTime($data['event_date'])->format('Y-m-d H:i:s'),
+            $eventDate->format('Y-m-d H:i:s'),
+            $deadline?->format('Y-m-d H:i:s'),
             (int) $data['max_attendees'],
         ]);
 
@@ -109,13 +121,15 @@ final class EventController
         Response::success('Event created successfully.', self::present($event), 201);
     }
 
-    /** DELETE /api/events/{id}  (admin) — registrations are removed by ON DELETE CASCADE */
+    /** DELETE /api/events/{id}  (admin). Registrations are removed by ON DELETE CASCADE. */
     public static function destroy(int $id): void
     {
         Auth::requireAdmin();
-        self::findOrFail($id);
+        $event = self::findOrFail($id);
 
         Database::connection()->prepare('DELETE FROM events WHERE id = ?')->execute([$id]);
+        UploadController::deleteIfLocal($event['image_url']);
+
         Response::success('Event deleted successfully.');
     }
 
@@ -130,19 +144,28 @@ final class EventController
     public static function present(array $e): array
     {
         $available = max(0, (int) $e['available_slots']);
+        $now       = time();
+        $isPast    = strtotime($e['event_date']) <= $now;
+        // No deadline set => registration closes when the event starts
+        $closesAt  = $e['registration_deadline'] ?? $e['event_date'];
+        $closed    = strtotime($closesAt) <= $now;
+
         return [
-            'id'               => (int) $e['id'],
-            'title'            => $e['title'],
-            'category'         => $e['category'],
-            'description'      => $e['description'],
-            'location'         => $e['location'],
-            'image_url'        => $e['image_url'],
-            'event_date'       => $e['event_date'],
-            'max_attendees'    => (int) $e['max_attendees'],
-            'registered_count' => (int) $e['registered_count'],
-            'available_slots'  => $available,
-            'is_full'          => $available === 0,
-            'is_past'          => strtotime($e['event_date']) <= time(),
+            'id'                    => (int) $e['id'],
+            'title'                 => $e['title'],
+            'category'              => $e['category'],
+            'description'           => $e['description'],
+            'location'              => $e['location'],
+            'image_url'             => $e['image_url'],
+            'event_date'            => $e['event_date'],
+            'registration_deadline' => $closesAt,
+            'max_attendees'         => (int) $e['max_attendees'],
+            'registered_count'      => (int) $e['registered_count'],
+            'available_slots'       => $available,
+            'is_full'               => $available === 0,
+            'is_past'               => $isPast,
+            'registration_closed'   => $closed,
+            'registration_open'     => !$closed && $available > 0,
         ];
     }
 }

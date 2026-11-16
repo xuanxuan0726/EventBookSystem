@@ -27,8 +27,9 @@ function safe(fn) {
 }
 
 async function request(path, { method = 'GET', body, auth = false, signal } = {}) {
+  const isForm = body instanceof FormData; // file uploads: the browser sets the multipart header itself
   const headers = { Accept: 'application/json' };
-  if (body !== undefined) headers['Content-Type'] = 'application/json';
+  if (body !== undefined && !isForm) headers['Content-Type'] = 'application/json';
   if (auth && tokenStore.get()) headers.Authorization = `Bearer ${tokenStore.get()}`;
 
   let res;
@@ -37,7 +38,7 @@ async function request(path, { method = 'GET', body, auth = false, signal } = {}
       method,
       headers,
       signal,
-      body: body !== undefined ? JSON.stringify(body) : undefined,
+      body: body === undefined ? undefined : isForm ? body : JSON.stringify(body),
     });
   } catch (err) {
     if (err.name === 'AbortError') throw err;
@@ -64,6 +65,7 @@ const qs = (params) => {
 
 export const eventsApi = {
   list: (filters = {}, signal) => request(`/events${qs(filters)}`, { signal }),
+  get: (id, signal) => request(`/events/${id}`, { signal }),
   register: (eventId, payload) => request(`/events/${eventId}/register`, { method: 'POST', body: payload }),
   create: (payload) => request('/events', { method: 'POST', body: payload, auth: true }),
   remove: (id) => request(`/events/${id}`, { method: 'DELETE', auth: true }),
@@ -74,6 +76,15 @@ export const registrationsApi = {
   cancel: (id, email) => request(`/registrations/${id}`, { method: 'DELETE', body: { email } }),
   all: () => request('/admin/registrations', { auth: true }),
   adminCancel: (id) => request(`/admin/registrations/${id}`, { method: 'DELETE', auth: true }),
+};
+
+export const uploadsApi = {
+  /** Uploads an image file; resolves to { data: { url: '/uploads/....jpg' } } */
+  image: (file) => {
+    const form = new FormData();
+    form.append('image', file);
+    return request('/admin/uploads', { method: 'POST', body: form, auth: true });
+  },
 };
 
 export const authApi = {
